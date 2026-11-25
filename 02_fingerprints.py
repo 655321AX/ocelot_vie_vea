@@ -40,4 +40,21 @@ for split in ["split_random", "split_scaffold"]:
     is_train = (df[split] == "train").to_numpy()
     vectorizer = DictVectorizer()
     vectorizer.fit(fps[is_train])
-    X = vectorizer.transform(fps)        # identifiers never seen in training are
+    X = vectorizer.transform(fps)        # identifiers never seen in training are ignored
+
+    # ---- 3. report ----
+    n_before = fps[~is_train].apply(len).sum()
+    n_after = X[~is_train].nnz
+    train_freq = X[is_train].getnnz(axis=0)   # in how many training molecules each column appears
+    print(f"{name}:")
+    print(f"  matrix: {X.shape[0]} molecules x {X.shape[1]} columns")
+    print(f"  columns seen in only 1 training molecule:  {(train_freq == 1).sum()}")
+    print(f"  columns seen in >= 10 training molecules:  {(train_freq >= 10).sum()}")
+    print(f"  val/test substructures unknown to training (ignored): "
+          f"{n_before - n_after} of {n_before} ({1 - n_after / n_before:.1%})\n")
+
+    # ---- 4. save ----
+    sparse.save_npz(DATA / f"cfmf_{name}.npz", X)
+    joblib.dump(vectorizer, DATA / f"cfmf_{name}_vectorizer.joblib")
+
+print(f"saved -> {DATA}")
